@@ -1,80 +1,490 @@
-openapi: 3.1.0
-info:
-  version: 1.0.0
-  title: Example.com
-  termsOfService: https://example.com/terms/
-  contact:
-    email: contact@example.com
-    url: http://example.com/contact
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  x-logo:
-    url: https://redocly.github.io/openapi-template/logo.png
-  description: >
-    This is an **example** API to demonstrate features of the OpenAPI
-    specification.
-
-    # Introduction
-
-    This API definition is intended to to be a good starting point for
-    describing your API in [OpenAPI/Swagger
-    format](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md).
-
-    It also demonstrates features of the
-    [create-openapi-repo](https://github.com/Redocly/create-openapi-repo) tool
-    and the [Redoc](https://github.com/Redocly/Redoc) documentation engine. Beyond
-    the standard OpenAPI syntax, we use a few 
-    [vendor extensions](https://github.com/Redocly/Redoc/blob/master/docs/redoc-vendor-extensions.md).
-
-    # OpenAPI Specification
-
-    The goal of The OpenAPI Specification is to define a standard, language-agnostic interface to REST APIs which
-    allows both humans and computers to discover and understand the capabilities
-    of the service without access to source
-    code, documentation, or through network traffic inspection. When properly
-    defined via OpenAPI, a consumer can 
-    understand and interact with the remote service with a minimal amount of
-    implementation logic. Similar to what
-    interfaces have done for lower-level programming, OpenAPI removes the
-    guesswork in calling the service.
-tags:
-  - name: Echo
-    description: Example echo operations.
-  - name: User
-    description: Operations about users.
-  - name: Tag
-    description: This is a tag description.
+openapi: 3.0.0
 servers:
-  - url: https://{tenant}/api/v1
-    variables:
-      tenant:
-        default: www
-        description: Your tenant id
-  - url: https://example.com/api/v1
+  - description: Production server
+    url: https://freddy.codesubmit.io
+info:
+  version: '1.0.0'
+  title: Sweet Tooth API
+  description: >-
+    # Introduction
+    
+    The **Sweet Tooth API** helps you manage candy orders in the *Sweet Tooth*
+    candy shop.
+    
+    ## Main features
+    
+    With this API, you can login to your account and view your dashboard
+    and orders. Use the production server `https://freddy.codesubmit.io` for all
+    requests.
+    
+    ## HTTP Requests
+    
+    The Sweet Tooth API uses standard HTTP requests, summarized in the following
+    list:
+    
+    - **POST**: Creates new resources
+      - *Used here to receive an `access_token` and a `refresh_token`*
+    
+    - **GET**: Retrieves a representation of a resource
+      - *Used here to fetch the data from the user dashboard and the list of
+      orders*
+    
+    ## HTTP Responses
+    
+    The API supports standard HTTP response status codes including error codes,
+    summarized in the following list:
+    
+    - **200**: The request is processed without issues
+      - *Returned when generating a JSON Web Token or fetching the dashboard and
+      orders*
+      
+    - **401**: The request is unauthorized
+      - *Returned when a user attempts to log in or access protected resources
+       with incorrect credentials or with an expired token*
+    
+    ## Authorization
+
+    The Sweet Tooth API uses basic authentication to log in and *JWT*
+    ([JSON Web Token](https://jwt.io/introduction)) to access protected
+    resources.
+    
+    Include the JSON Web Token in an authorization header in your request in the
+    following format: `Authorization: Bearer <token>`.
+
+    ## How to use the request samples
+
+    Each request includes request samples in multiple languages to help you get
+    started with the Sweet Tooth API. The samples contain *placeholder values*
+    in capital letters in *snake_case* *(for example, `REPLACE_BEARER_TOKEN`),
+    which you must replace with the appropriate values.
+
+tags:
+  - name: account access
+    description: Grant access to the user's account using JWT
+  - name: shop
+    description: Display the user's dashboard and order details
+
 paths:
-  /users/{username}:
-    $ref: paths/users_{username}.yaml
-  /echo:
-    $ref: paths/echo.yaml
-  /pathItem:
-    $ref: paths/pathItem.yaml
-  /pathItemWithExamples:
-    $ref: paths/pathItemWithExamples.yaml
+  /login:
+    post:
+      operationId: getAccessTokens
+      description: >-
+        Allows you to log in with username and password. The endpoint returns
+        **two** tokens (JSON Web Tokens)—one `access_token`, valid for 15
+        minutes, and one `refresh_token`, valid for 30 days.
+
+
+        Note that the credentials are sent in the **request body** and
+        **not** in an authorization header, which is the more common basic
+        authorization method.
+      summary: Login and receive `access_token`
+      tags:
+        - account access
+      security:
+        - basicAuth: []
+      requestBody:
+        description: Contains a username and password.
+        content: 
+          'application/json':
+            schema:
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  description: The username of the user.
+                  type: string
+                  example: 'freddy'
+                password:
+                  description: The password of the user.
+                  type: string
+                  format: password
+                  example: 'ElmStreet2019'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoginTokens'
+        '401':
+          $ref: '#/components/responses/CredentialError'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+ 
+  /refresh:
+    post:
+      operationId: refreshAccessToken
+      description: >-
+        Allows you to get a new `access_token` with the `refresh_token` you get
+        from the `POST /login` operation. Include the `refresh_token` in an
+        authorization header.
+      summary: Refresh `access_token`
+      tags:
+        - account access
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/RefreshAccess'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  
+  /orders:
+    get:
+      operationId: getOrders
+      description: >-
+        Contains details on orders made in the shop.
+        
+
+        You can view *all* orders by omitting the query parameters in your
+        request. You can filter the results with a case-insensitive search term,
+        such as a product or customer name, and paginate the results in groups
+        of *50*.
+
+
+        Make sure to include your `access_token` as described in the
+        introduction.
+      summary: Get all orders
+      tags:
+        - shop
+      security:
+        - bearerAuth: []
+      parameters:
+      - name: pageNumber
+        in: query
+        description: Current page number in the list of results.
+        example: 1
+        schema:
+          type: integer
+          format: int32
+      - name: q
+        in: query
+        description: A search term to filter out the results.
+        example: 'Chili'
+        schema:
+          type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/OrdersList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'            
+  
+  /dashboard:
+    get:
+      operationId: getDashboard
+      description: >-
+        Returns the user's dashboard information, including a list of the
+        bestselling items and an overview of the revenue for the preceding week
+        and year.
+
+
+        Make sure to include your `access_token` as described in the
+        introduction.
+      summary: Get the user's dashboard
+      tags:
+        - shop
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          $ref: '#/components/responses/DashboardData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
+  schemas:
+    Address:
+      description: The address of the customer.
+      type: object
+      properties:
+        city:
+          description: The city of the customer.
+          type: string
+          example: 'Chicago'
+        street:
+          description: The street of the customer.
+          type: string
+          example: 'Hill Street'
+        zipcode:
+          description: The postal code of the customer.
+          type: integer
+          format: int32
+          example: 86392
+    
+    Customer:
+      type: object
+      description: The information on one customer.
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        id:
+          description: The ID of the customer in the shop.
+          type: string
+          format: uuid
+          example: '6aa91586-a567-aaef-c5e3-40e20f5a401c'
+        name:
+          description: The first name of the customer.
+          type: string
+          example: 'Nina'
+        surname:
+          description: The surname of the customer.
+          type: string
+          example: 'Rogers'
+    
+    Product:
+      type: object
+      description: The information on one product.
+      properties:
+        id:
+          description: The product ID.
+          type: string
+          format: uuid
+          example: '2f26ae71-78ec-243b-b022-417260cb1481'
+        image:
+          description: A photo of the product.
+          type: string
+          example: 'https://images.unsplash.com/photo-1581053462058-9c89df7d26e9?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=500&ixid=MnwxfDB8MXxyYW5kb218MHx8Y2FuZHl8fHx8fHwxNjQwNjM1NjA3&ixlib=rb-1.2.1&q=80&utm_campaign=api-credit&utm_medium=referral&utm_source=unsplash_source&w=500'
+        name:
+          description: The product name.
+          type: string
+          example: 'Starshine Avocado Leaf Dark Cherry Cotton Candy'
+    
+    OrderedProduct:
+      allOf:
+      - $ref: '#/components/schemas/Product'
+      - type: object
+        properties:
+          quantity:
+            description: The quantity of this product included in the order.
+            type: integer
+            format: int32
+            example: '91'
+    
+    Orders:
+      description: All orders in the shop.
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+    
+    Order:
+      description: Information on one order in the shop.
+      type: object
+      properties:
+        created_at:
+          description: Timestamp when the order was created.
+          type: string
+          format: date-time
+          example: '2023-08-12T00:39:18.938869'
+        currency:
+          description: The currency the order was placed in.
+          type: string
+          example: '$'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        id:
+          description: The order ID.
+          type: string
+          format: uuid
+          example: '6b402a24-add1-5eb1-d08b-d9880589a175'
+        product:
+          $ref: '#/components/schemas/OrderedProduct'
+        status:
+          description: The status of the order.
+          type: string
+          enum: ['processing', 'shipped', 'delivered']
+          example: 'delivered'
+        total:
+          description: The total amount of the order in the selected currency.
+          type: integer
+          format: int32
+          example: '8624'
+    
+    Bestseller:
+      description: The current bestselling products.
+      type: object
+      properties:
+        product:
+          $ref: '#/components/schemas/Product'
+        revenue:
+          description: The revenue generated by this product.
+          type: integer
+          format: int64
+          example: '2835702'
+        units:
+          description: The number of product units sold.
+          type: integer
+          format: int32
+          example: '6178'
+    
+    TotalOrders:
+      description: >-
+        The number of orders and the total monetary amount of these orders for
+        the specific time window.
+      type: object
+      properties:
+        orders:
+          description: The number of orders created in this time window.
+          type: integer
+          format: int32
+          example: '330'
+        total:
+          description: The total monetary value of the created orders.
+          type: integer
+          format: int64
+          example: '2952510'
+    
+    WeeklySales:
+      description: >-
+        Sales over the preceding seven days, where each day is represented by an
+        integer in order of least to most recent, with the number '7' referring
+        to the preceding calendar day.
+      type: object
+      properties:
+        "1":
+          $ref: '#/components/schemas/TotalOrders'
+        "2":
+          $ref: '#/components/schemas/TotalOrders'
+        "3":
+          $ref: '#/components/schemas/TotalOrders'
+        "4":
+          $ref: '#/components/schemas/TotalOrders'
+        "5":
+          $ref: '#/components/schemas/TotalOrders'
+        "6":
+          $ref: '#/components/schemas/TotalOrders'
+        "7":
+          $ref: '#/components/schemas/TotalOrders'
+        
+    MonthlySales:
+      description: >-
+        Sales over the preceding 12 months, where each month is represented by
+        an integer in order of least to most recent, with the number '12'
+        referring to the preceding calendar month.
+      type: object
+      properties:
+        "1":
+          $ref: '#/components/schemas/TotalOrders'
+        "2":
+          $ref: '#/components/schemas/TotalOrders'
+        "3":
+          $ref: '#/components/schemas/TotalOrders'
+        "4":
+          $ref: '#/components/schemas/TotalOrders'
+        "5":
+          $ref: '#/components/schemas/TotalOrders'
+        "6":
+          $ref: '#/components/schemas/TotalOrders'
+        "7":
+          $ref: '#/components/schemas/TotalOrders'
+        "8":
+          $ref: '#/components/schemas/TotalOrders'
+        "9":
+          $ref: '#/components/schemas/TotalOrders'
+        "10":
+          $ref: '#/components/schemas/TotalOrders'
+        "11":
+          $ref: '#/components/schemas/TotalOrders'
+        "12":
+          $ref: '#/components/schemas/TotalOrders'
+
+  responses:
+    LoginTokens:
+      description: Login successful.
+      content:
+        'application/json':
+          schema:
+            properties:
+              access_token:
+                description: >-
+                  Token needed to access protected resources. Valid for 15
+                  minutes.
+                type: string
+                example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDkwODU2OTYsIm5iZiI6MTY0OTA4NTY5NiwianRpIjoiYjI0ZmYxNTQtNTI3MC00OTEyLWIxNDgtNmUzZTg5MzVjODFkIiwiZXhwIjoxNjQ5MDg2NTk2LCJpZGVudGl0eSI6ImZyZWRkeSIsImZyZXNoIjpmYWxzZSwidHlwZSI6ImFjY2VzcyJ9.6ZPvQJxfhuIYI-Eh61leU_55VtNl1H7uptmEtmu-01w'
+              refresh_token:
+                description: Token used to refresh the `access_token`. Valid for
+                  30 days.
+                type: string
+                example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDkwODU2OTYsIm5iZiI6MTY0OTA4NTY5NiwianRpIjoiODM3NGJhNzktMjRlMi00N2IwLWFlNTktYjIyNzhjYWVhZjgwIiwiZXhwIjoxNjUxNjc3Njk2LCJpZGVudGl0eSI6ImZyZWRkeSIsInR5cGUiOiJyZWZyZXNoIn0.zOFY-9YyepEBgCoCF7ugR25xf2sazVSQ_m7nwM8uXe8'
+
+    RefreshAccess:
+      description: Refresh of `access_token` successful.
+      content:
+        'application/json':
+          schema:
+            properties:
+              access_token:
+                description: Token needed to access protected resources. 
+                  Valid for 15 minutes.
+                type: string     
+                example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDg5OTkyNTgsIm5iZiI6MTY0ODk5OTI1OCwianRpIjoiZDkyYTEwYjEtNjdmZi00NTUwLTlhZWItZDIzOTEzZTUwOTk1IiwiZXhwIjoxNjQ5MDAwMTU4LCJpZGVudGl0eSI6ImZyZWRkeSIsImZyZXNoIjpmYWxzZSwidHlwZSI6ImFjY2VzcyJ9.Qzp9ZVRNWbiO0Vd7rJV4cUMITCMJa-ESskNjjgNMH1M'
+
+    OrdersList:
+      description: Orders retrieved successfully.
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 1000
+            items:
+              $ref: '#/components/schemas/Orders'
+
+    DashboardData:
+      description: Dashboard data retrieved successfully.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              bestsellers:
+                description: The bestselling products, along with the number
+                  of units sold and the revenue per product.
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bestseller'
+              sales_over_time_week:
+                $ref: '#/components/schemas/WeeklySales'
+              sales_over_time_year:
+                $ref: '#/components/schemas/MonthlySales'
+
+    BadRequest:
+      description: Incorrect request format.
+      content:
+        'application/json':
+          schema:
+            properties:
+              message:
+                description: The error message.
+                type: string
+                example: 'Only supports Content-Type: json'
+
+    CredentialError:
+      description: Incorrect username or password provided.
+      content:
+        'application/json':
+          schema:
+            properties:
+              msg:
+                description: The error message.
+                type: string
+                example: 'Bad credentials'
+
+    Unauthorized:
+      description: The `access_token` has expired.
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              msg:
+                description: The `access_token` has expired.
+                type: string
+                example: 'Token has expired'
+
   securitySchemes:
-    main_auth:
-      type: oauth2
-      flows:
-        implicit:
-          authorizationUrl: http://example.com/api/oauth/dialog
-          scopes:
-            read:users: read users info
-            write:users: modify or remove users
-    api_key:
-      type: apiKey
-      in: header
-      name: api_key
-    basic_auth:
+    basicAuth:
       type: http
       scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
